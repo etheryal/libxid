@@ -110,7 +110,7 @@ use thiserror::Error;
 const ID_LEN: usize = 12;
 
 #[derive(Error, Debug)]
-pub enum IdGenerationError {
+pub enum Error {
     #[error("System time error: {0}")]
     SystemTimeError(#[from] std::time::SystemTimeError),
 }
@@ -130,11 +130,11 @@ pub fn new_generator() -> Generator {
 }
 
 impl Generator {
-    pub fn new_id(&self) -> Result<Id, IdGenerationError> {
+    pub fn new_id(&self) -> Result<Id, Error> {
         self.new_id_with_time(SystemTime::now())
     }
 
-    pub fn new_id_with_time(&self, t: SystemTime) -> Result<Id, IdGenerationError> {
+    pub fn new_id_with_time(&self, t: SystemTime) -> Result<Id, Error> {
         let n = t.duration_since(UNIX_EPOCH)?;
         Ok(self.generate(n.as_secs()))
     }
@@ -399,6 +399,7 @@ fn get_pid() -> u32 {
     }
 }
 
+#[cfg(not(target_os = "linux"))]
 fn get_pid() -> u32 {
     process::id()
 }
