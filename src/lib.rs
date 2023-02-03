@@ -1,39 +1,44 @@
 //! (This is a port of [Olivier Poitrey]'s [xid] Go library)
 //!
-//! Package xid is a globally unique id generator library, ready to be used safely directly in your server code.
+//! Package xid is a globally unique id generator library, ready to be used
+//! safely directly in your server code.
 //!
-//! Xid is using Mongo Object ID algorithm to generate globally unique ids with a different serialization (base64) to make it shorter when transported as a string:
-//! https://docs.mongodb.org/manual/reference/object-id/
+//! Xid is using Mongo Object ID algorithm to generate globally unique ids with
+//! a different serialization (base64) to make it shorter when transported as a
+//! string: https://docs.mongodb.org/manual/reference/object-id/
 //!
 //! - 4-byte value representing the seconds since the Unix epoch,
 //! - 3-byte machine identifier,
 //! - 2-byte process id, and
 //! - 3-byte counter, starting with a random value.
 //!
-//! The binary representation of the id is compatible with Mongo 12 bytes Object IDs.
-//! The string representation is using base32 hex (w/o padding) for better space efficiency
-//! when stored in that form (20 bytes). The hex variant of base32 is used to retain the
-//! sortable property of the id.
+//! The binary representation of the id is compatible with Mongo 12 bytes Object
+//! IDs. The string representation is using base32 hex (w/o padding) for better
+//! space efficiency when stored in that form (20 bytes). The hex variant of
+//! base32 is used to retain the sortable property of the id.
 //!
-//! Xid doesn't use base64 because case sensitivity and the 2 non alphanum chars may be an
-//! issue when transported as a string between various systems. Base36 wasn't retained either
-//! because 1/ it's not standard 2/ the resulting size is not predictable (not bit aligned)
-//! and 3/ it would not remain sortable. To validate a base32 `xid`, expect a 20 chars long,
-//! all lowercase sequence of `a` to `v` letters and `0` to `9` numbers (`[0-9a-v]{20}`).
+//! Xid doesn't use base64 because case sensitivity and the 2 non alphanum chars
+//! may be an issue when transported as a string between various systems. Base36
+//! wasn't retained either because 1/ it's not standard 2/ the resulting size is
+//! not predictable (not bit aligned) and 3/ it would not remain sortable. To
+//! validate a base32 `xid`, expect a 20 chars long, all lowercase sequence of
+//! `a` to `v` letters and `0` to `9` numbers (`[0-9a-v]{20}`).
 //!
-//! UUIDs are 16 bytes (128 bits) and 36 chars as string representation. Twitter Snowflake
-//! ids are 8 bytes (64 bits) but require machine/data-center configuration and/or central
-//! generator servers. xid stands in between with 12 bytes (96 bits) and a more compact
-//! URL-safe string representation (20 chars). No configuration or central generator server
-//! is required so it can be used directly in server's code.
+//! UUIDs are 16 bytes (128 bits) and 36 chars as string representation. Twitter
+//! Snowflake ids are 8 bytes (64 bits) but require machine/data-center
+//! configuration and/or central generator servers. xid stands in between with
+//! 12 bytes (96 bits) and a more compact URL-safe string representation (20
+//! chars). No configuration or central generator server is required so it can
+//! be used directly in server's code.
 //!
 //! | Name        | Binary Size | String Size    | Features
 //! |-------------|-------------|----------------|----------------
-//! | [UUID]      | 16 bytes    | 36 chars       | configuration free, not sortable
-//! | [shortuuid] | 16 bytes    | 22 chars       | configuration free, not sortable
-//! | [Snowflake] | 8 bytes     | up to 20 chars | needs machin/DC configuration, needs central server, sortable
-//! | [MongoID]   | 12 bytes    | 24 chars       | configuration free, sortable
-//! | xid         | 12 bytes    | 20 chars       | configuration free, sortable
+//! | [UUID]      | 16 bytes    | 36 chars       | configuration free, not
+//! sortable | [shortuuid] | 16 bytes    | 22 chars       | configuration free,
+//! not sortable | [Snowflake] | 8 bytes     | up to 20 chars | needs machin/DC
+//! configuration, needs central server, sortable | [MongoID]   | 12 bytes    |
+//! 24 chars       | configuration free, sortable | xid         | 12 bytes    |
+//! 20 chars       | configuration free, sortable
 //!
 //! [UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier
 //! [shortuuid]: https://github.com/stochastic-technologies/shortuuid
@@ -43,19 +48,23 @@
 //! Features:
 //!
 //! - Size: 12 bytes (96 bits), smaller than UUID, larger than snowflake
-//! - Base32 hex encoded by default (20 chars when transported as printable string, still sortable)
+//! - Base32 hex encoded by default (20 chars when transported as printable
+//!   string, still sortable)
 //! - Non configured, you don't need set a unique machine and/or data center id
 //! - K-ordered
 //! - Embedded time with 1 second precision
-//! - Unicity guaranteed for 16,777,216 (24 bits) unique ids per second and per host/process
+//! - Unicity guaranteed for 16,777,216 (24 bits) unique ids per second and per
+//!   host/process
 //! - Lock-free (i.e.: unlike UUIDv1 and v2)
 //!
 //! Notes:
 //!
-//! - Xid is dependent on the system time, a monotonic counter and so is not cryptographically secure.
+//! - Xid is dependent on the system time, a monotonic counter and so is not
+//!   cryptographically secure.
 //! If unpredictability of IDs is important, you should NOT use xids.
-//! It is worth noting that most of the other UUID like implementations are also not cryptographically secure.
-//! You shoud use libraries that rely on cryptographically secure sources if you want a truly random ID generator.
+//! It is worth noting that most of the other UUID like implementations are also
+//! not cryptographically secure. You shoud use libraries that rely on
+//! cryptographically secure sources if you want a truly random ID generator.
 //!
 //! References:
 //!
@@ -71,15 +80,15 @@
 //! // initialize it once, reuse it afterwards
 //! let mut g = libxid::new_generator();
 //!
-//! for i in 0..10{
+//! for i in 0..10 {
 //!     let id = g.new_id().unwrap();
 //!
 //!     println!(
-//!             "encoded: {:?}    machine: {:?}    counter: {:?}    time: {:?}",
-//!             id.encode(),
-//!             id.machine(),
-//!             id.counter(),
-//!             id.time()
+//!         "encoded: {:?}    machine: {:?}    counter: {:?}    time: {:?}",
+//!         id.encode(),
+//!         id.machine(),
+//!         id.counter(),
+//!         id.time()
 //!     );
 //! }
 //! ```
@@ -87,48 +96,24 @@
 //! [Olivier Poitrey]: https://github.com/rs
 //! [xid]: https://github.com/rs/xid
 
-extern crate byteorder;
-extern crate crc32fast;
-extern crate gethostname;
-extern crate md5;
-extern crate rand;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{fmt, io, process};
 
 use byteorder::{BigEndian, ByteOrder};
-use crc32fast::Hasher;
 use gethostname::*;
 use rand::prelude::*;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::error::Error;
-use std::fmt;
-use std::fs;
-use std::fs::File;
-use std::io;
-use std::io::prelude::*;
-use std::process;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use thiserror::Error;
 
 const ID_LEN: usize = 12;
 
-// ---
-
-#[derive(Clone, Debug)]
-pub struct IDGenerationError(String);
-
-impl Error for IDGenerationError {
-    fn description(&self) -> &str {
-        self.0.as_str()
-    }
+#[derive(Error, Debug)]
+pub enum IdGenerationError {
+    #[error("System time error: {0}")]
+    SystemTimeError(#[from] std::time::SystemTimeError),
 }
-
-impl fmt::Display for IDGenerationError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-// ---
 
 pub struct Generator {
     counter: AtomicUsize,
@@ -145,18 +130,16 @@ pub fn new_generator() -> Generator {
 }
 
 impl Generator {
-    pub fn new_id(&self) -> Result<ID, IDGenerationError> {
+    pub fn new_id(&self) -> Result<Id, IdGenerationError> {
         self.new_id_with_time(SystemTime::now())
     }
 
-    pub fn new_id_with_time(&self, t: SystemTime) -> Result<ID, IDGenerationError> {
-        match t.duration_since(UNIX_EPOCH) {
-            Ok(n) => Ok(self.generate(n.as_secs())),
-            Err(e) => Err(IDGenerationError(e.description().to_string())),
-        }
+    pub fn new_id_with_time(&self, t: SystemTime) -> Result<Id, IdGenerationError> {
+        let n = t.duration_since(UNIX_EPOCH)?;
+        Ok(self.generate(n.as_secs()))
     }
 
-    fn generate(&self, ts: u64) -> ID {
+    fn generate(&self, ts: u64) -> Id {
         let mut buff = [0u8; ID_LEN];
 
         BigEndian::write_u32(&mut buff, ts as u32);
@@ -173,7 +156,7 @@ impl Generator {
         buff[10] = (i >> 8) as u8;
         buff[11] = (i) as u8;
 
-        ID { val: buff }
+        Id { val: buff }
     }
 }
 
@@ -187,14 +170,12 @@ impl fmt::Debug for Generator {
     }
 }
 
-// ---
-
 #[derive(Clone)]
-pub struct ID {
+pub struct Id {
     val: [u8; ID_LEN],
 }
 
-impl ID {
+impl Id {
     pub fn encode(&self) -> String {
         let alphabet = String::from("0123456789abcdefghijklmnopqrstuv");
 
@@ -229,38 +210,38 @@ impl ID {
     pub fn decode(input: &str) -> Self {
         let mut dec = [1u8; 256];
 
-        dec[48] = 0 as u8;
-        dec[49] = 1 as u8;
-        dec[50] = 2 as u8;
-        dec[51] = 3 as u8;
-        dec[52] = 4 as u8;
-        dec[53] = 5 as u8;
-        dec[54] = 6 as u8;
-        dec[55] = 7 as u8;
-        dec[56] = 8 as u8;
-        dec[57] = 9 as u8;
-        dec[97] = 10 as u8;
-        dec[98] = 11 as u8;
-        dec[99] = 12 as u8;
-        dec[100] = 13 as u8;
-        dec[101] = 14 as u8;
-        dec[102] = 15 as u8;
-        dec[103] = 16 as u8;
-        dec[104] = 17 as u8;
-        dec[105] = 18 as u8;
-        dec[106] = 19 as u8;
-        dec[107] = 20 as u8;
-        dec[108] = 21 as u8;
-        dec[109] = 22 as u8;
-        dec[110] = 23 as u8;
-        dec[111] = 24 as u8;
-        dec[112] = 25 as u8;
-        dec[113] = 26 as u8;
-        dec[114] = 27 as u8;
-        dec[115] = 28 as u8;
-        dec[116] = 29 as u8;
-        dec[117] = 30 as u8;
-        dec[118] = 31 as u8;
+        dec[48] = 0_u8;
+        dec[49] = 1_u8;
+        dec[50] = 2_u8;
+        dec[51] = 3_u8;
+        dec[52] = 4_u8;
+        dec[53] = 5_u8;
+        dec[54] = 6_u8;
+        dec[55] = 7_u8;
+        dec[56] = 8_u8;
+        dec[57] = 9_u8;
+        dec[97] = 10_u8;
+        dec[98] = 11_u8;
+        dec[99] = 12_u8;
+        dec[100] = 13_u8;
+        dec[101] = 14_u8;
+        dec[102] = 15_u8;
+        dec[103] = 16_u8;
+        dec[104] = 17_u8;
+        dec[105] = 18_u8;
+        dec[106] = 19_u8;
+        dec[107] = 20_u8;
+        dec[108] = 21_u8;
+        dec[109] = 22_u8;
+        dec[110] = 23_u8;
+        dec[111] = 24_u8;
+        dec[112] = 25_u8;
+        dec[113] = 26_u8;
+        dec[114] = 27_u8;
+        dec[115] = 28_u8;
+        dec[116] = 29_u8;
+        dec[117] = 30_u8;
+        dec[118] = 31_u8;
 
         // XXX: the code commented below generated the array above
         // let alphabet = String::from("0123456789abcdefghijklmnopqrstuv");
@@ -272,7 +253,7 @@ impl ID {
 
         let src = input.as_bytes();
 
-        ID {
+        Id {
             val: [
                 dec[src[0] as usize] << 3 | dec[src[1] as usize] >> 2,
                 dec[src[1] as usize] << 6 | dec[src[2] as usize] << 1 | dec[src[3] as usize] >> 4,
@@ -313,55 +294,54 @@ impl ID {
     }
 }
 
-impl fmt::Debug for ID {
+impl fmt::Debug for Id {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ID: {:?}", self.val)
     }
 }
 
-impl fmt::Display for ID {
+impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ID: {:?}", self.encode())
     }
 }
 
-impl PartialEq for ID {
-    fn eq(&self, other: &ID) -> bool {
+impl PartialEq for Id {
+    fn eq(&self, other: &Id) -> bool {
         self.val == other.val
     }
 }
 
-impl From<&str> for ID {
+impl From<&str> for Id {
     // TODO: implement try_from https://doc.rust-lang.org/std/convert/trait.TryFrom.html when no
     // longer nightly
     fn from(s: &str) -> Self {
         if s.len() == 20 {
-            return ID::decode(s);
+            return Id::decode(s);
         }
 
-        ID { val: [0u8; ID_LEN] }
+        Id { val: [0u8; ID_LEN] }
     }
 }
 
-impl Eq for ID {}
+impl Eq for Id {}
 
-impl PartialOrd for ID {
-    fn partial_cmp(&self, other: &ID) -> Option<std::cmp::Ordering> {
+impl PartialOrd for Id {
+    fn partial_cmp(&self, other: &Id) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for ID {
-    fn cmp(&self, other: &ID) -> std::cmp::Ordering {
+impl Ord for Id {
+    fn cmp(&self, other: &Id) -> std::cmp::Ordering {
         self.val.cmp(&other.val)
     }
 }
 
-impl Serialize for ID {
+impl Serialize for Id {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
-    {
+        S: Serializer, {
         serializer.serialize_str(self.encode().as_str())
     }
 }
@@ -369,7 +349,7 @@ impl Serialize for ID {
 struct IDVisitor;
 
 impl<'de> Visitor<'de> for IDVisitor {
-    type Value = ID;
+    type Value = Id;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a str")
@@ -377,66 +357,61 @@ impl<'de> Visitor<'de> for IDVisitor {
 
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
     where
-        E: de::Error,
-    {
-        Ok(ID::from(value))
+        E: de::Error, {
+        Ok(Id::from(value))
     }
 }
 
-impl<'de> Deserialize<'de> for ID {
+impl<'de> Deserialize<'de> for Id {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>,
-    {
+        D: Deserializer<'de>, {
         deserializer.deserialize_str(IDVisitor)
     }
 }
 
-// ---
-
 fn rand_int() -> AtomicUsize {
     let mut buff = [0u8; 3];
-
     thread_rng().fill_bytes(&mut buff);
 
     let x = (buff[0] as usize) << 16 | (buff[1] as usize) << 8 | buff[2] as usize;
-
     AtomicUsize::new(x)
 }
 
+#[cfg(target_os = "linux")]
 fn get_pid() -> u32 {
+    use crc32fast::Hasher;
+
     let mut pid = process::id();
 
     // If /proc/self/cpuset exists and is not /, we can assume that we are in a
     // form of container and use the content of cpuset xor-ed with the PID in
     // order get a reasonable machine global unique PID.
-    match fs::read("/proc/self/cpuset") {
+    match std::fs::read("/proc/self/cpuset") {
         Err(_) => pid,
-
         Ok(buff) => {
             let mut hasher = Hasher::new();
             hasher.update(buff.as_slice());
             let checksum = hasher.finalize();
-
             pid ^= checksum;
-
             pid
-        }
+        },
     }
 }
 
-fn read_machine_id() -> [u8; 3] {
-    let id = match platform_machine_id() {
-        // XXX: https://github.com/rust-lang/rfcs/blob/master/text/0107-pattern-guards-with-bind-by-move.md
-        Ok(x) => {
-            if !x.is_empty() {
-                x
-            } else {
-                hostname()
-            }
-        }
+fn get_pid() -> u32 {
+    process::id()
+}
 
-        _ => hostname(),
+fn read_machine_id() -> [u8; 3] {
+    let id = if let Ok(x) = platform_machine_id() {
+        if !x.is_empty() {
+            x
+        } else {
+            hostname()
+        }
+    } else {
+        hostname()
     };
 
     if id.is_empty() {
@@ -446,34 +421,37 @@ fn read_machine_id() -> [u8; 3] {
     }
 
     let hash = md5::compute(id);
-
     [hash[0], hash[1], hash[2]]
 }
 
 #[cfg(target_os = "linux")]
 fn platform_machine_id() -> Result<String, io::Error> {
-    // XXX: unlikely to work if read with an unpriviledged user
+    use std::fs::File;
+    use std::io::prelude::*;
+
+    // XXX: unlikely to work if read with an unprivileged user
     let mut file = File::open("/sys/class/dmi/id/product_uuid")?;
-
     let mut contents = String::new();
-
     file.read_to_string(&mut contents)?;
-
     Ok(contents)
 }
 
+#[cfg(not(target_os = "linux"))]
+fn platform_machine_id() -> Result<String, io::Error> {
+    Err(io::Error::new(io::ErrorKind::NotFound, "unsupported"))
+}
+
 fn hostname() -> String {
-    gethostname()
-        .into_string()
-        .expect("can not fetch machine's hostname")
+    gethostname().into_string().unwrap_or_default()
 }
 
 // ---
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::time::Instant;
+
+    use super::*;
 
     #[test]
     fn test_basic() {
@@ -489,14 +467,12 @@ mod tests {
 
             assert!(
                 previous_id < id,
-                format!(
-                    "{} ({:?}) != {} ({:?}) {}",
-                    previous_id.encode(),
-                    previous_id,
-                    id.encode(),
-                    id,
-                    i
-                )
+                "{} ({:?}) != {} ({:?}) {}",
+                previous_id.encode(),
+                previous_id,
+                id.encode(),
+                id,
+                i
             );
 
             if i > 0 {
@@ -527,15 +503,11 @@ mod tests {
 
         let elapsed =
             start.elapsed().as_secs() as f64 + start.elapsed().subsec_nanos() as f64 * 1e-9;
-
         let limit = 0.5;
 
         assert!(
             elapsed <= limit,
-            format!(
-                "Must generated {} ids id less than {} second, took {} seconds",
-                total, limit, elapsed
-            )
+            "Must generated {total} ids id less than {limit} second, took {elapsed} seconds"
         );
     }
 
@@ -545,7 +517,7 @@ mod tests {
 
         let g = new_generator();
 
-        let mut buff: Vec<ID> = Vec::with_capacity(total as usize);
+        let mut buff: Vec<Id> = Vec::with_capacity(total as usize);
 
         for _ in 0..total {
             buff.push(g.new_id().unwrap().clone());
@@ -559,15 +531,11 @@ mod tests {
 
         let elapsed =
             start.elapsed().as_secs() as f64 + start.elapsed().subsec_nanos() as f64 * 1e-9;
-
         let limit = 1.5;
 
         assert!(
             elapsed <= limit,
-            format!(
-                "Must encode {} ids id less than {} second, took {} seconds",
-                total, limit, elapsed
-            )
+            "Must encode {total} ids id less than {limit} second, took {elapsed} seconds"
         );
     }
 
@@ -601,12 +569,12 @@ mod tests {
 
         let a = g.new_id().unwrap();
 
-        let b = ID::from(a.encode().as_str());
+        let b = Id::from(a.encode().as_str());
 
         assert_eq!(a.val, b.val);
         assert_eq!(a.encode(), b.encode());
 
-        assert_eq!(ID::from("invalid").val, [0u8; ID_LEN]);
+        assert_eq!(Id::from("invalid").val, [0u8; ID_LEN]);
     }
 
     #[test]
@@ -618,7 +586,7 @@ mod tests {
         for _ in 0..total {
             let id = g.new_id().unwrap();
 
-            assert_eq!(id, ID::decode(&id.encode()));
+            assert_eq!(id, Id::decode(&id.encode()));
         }
     }
 
@@ -635,28 +603,22 @@ mod tests {
 
             buff.push(id.encode().clone());
 
-            assert_eq!(id, ID::decode(&id.encode()));
+            assert_eq!(id, Id::decode(&id.encode()));
         }
 
-        // ----
 
         let start = Instant::now();
-
         for encoded in buff.into_iter() {
-            ID::decode(&encoded);
+            Id::decode(&encoded);
         }
 
         let elapsed =
             start.elapsed().as_secs() as f64 + start.elapsed().subsec_nanos() as f64 * 1e-9;
-
         let limit = 0.5;
 
         assert!(
             elapsed <= limit,
-            format!(
-                "Must decode {} ids in less than {} second, took {} seconds",
-                total, limit, elapsed
-            )
+            "Must decode {total} ids in less than {limit} second, took {elapsed} seconds"
         );
     }
 
@@ -668,10 +630,10 @@ mod tests {
 
         let serialized = serde_json::to_string(&src).unwrap();
 
-        let deserialized: ID = serde_json::from_str(&serialized).unwrap();
+        let deserialized: Id = serde_json::from_str(&serialized).unwrap();
         assert_eq!(src, deserialized);
 
-        let invalid: ID = serde_json::from_str("\"invalid\"").unwrap();
+        let invalid: Id = serde_json::from_str("\"invalid\"").unwrap();
         assert_eq!(invalid.val, [0u8; ID_LEN]);
     }
 }
